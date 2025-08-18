@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { View, Text, TextInput, Button, Alert } from "react-native";
 import * as SecureStore from "expo-secure-store";
-import { apiFetch } from "../../src/api";
+import { apiFetch, setAccessToken } from "../../src/api";
 import { useRouter } from "expo-router";
 
 export default function LoginScreen() {
@@ -16,6 +16,7 @@ export default function LoginScreen() {
         body: JSON.stringify({ email, password }),
       });
       await SecureStore.setItemAsync("accessToken", accessToken);
+      setAccessToken(accessToken);
       router.replace("/");
     } catch (e) {
       Alert.alert("Login failed", (e as Error).message);

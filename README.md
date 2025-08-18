@@ -111,25 +111,26 @@ SENTRY_DSN=
 - **State Management**: Redux Toolkit + RTK Query
 
 **Backend:**
-- **API**: Node.js + Express.js + TypeScript
-- **Database**: MongoDB with Mongoose ODM
-- **Cache**: Redis for sessions and real-time data
-- **Queue**: Bull Queue for background jobs
-- **Authentication**: JWT + Passport.js
+- **API**: NestJS + TypeScript
+- **Database**: PostgreSQL (Prisma ORM)
+- **Cache**: Redis 7+ (BullMQ for jobs/queues)
+- **Uploads**: Local disk (dev) or S3/MinIO (prod/infra)
+- **Authentication**: JWT (access/refresh, RBAC)
+- **Background Jobs**: BullMQ (email, withdrawal, etc.)
 
 **Cloud & DevOps:**
-- **Hosting**: AWS (EC2, ECS, Lambda)
-- **Storage**: AWS S3 for media files
+- **Hosting**: AWS (EC2, ECS, Lambda), Docker Compose for local dev
+- **Storage**: AWS S3/MinIO for media files
 - **CDN**: AWS CloudFront
-- **Monitoring**: AWS CloudWatch + Sentry
+- **Monitoring**: AWS CloudWatch, Sentry, Mixpanel
 - **CI/CD**: GitHub Actions
 
 **External Services:**
-- **Payments**: Stripe for instant payouts
+- **Payments**: Stripe (Connect/test mode)
 - **Maps**: Google Maps API
 - **Push Notifications**: Firebase Cloud Messaging
 - **Analytics**: Mixpanel + Google Analytics
-- **Email**: SendGrid for transactional emails
+- **Email**: Mailhog dev, SendGrid prod
 
 ## 📱 Mobile App Development
 

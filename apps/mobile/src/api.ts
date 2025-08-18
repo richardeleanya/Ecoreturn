@@ -1,4 +1,5 @@
 import { Platform } from "react-native";
+import * as SecureStore from "expo-secure-store";
 
 const BASE_URL =
   process.env.BASE_URL ||
@@ -6,14 +7,27 @@ const BASE_URL =
     ? "http://10.0.2.2:3000"
     : "http://localhost:3000");
 
+let accessToken: string | undefined = undefined;
+
+export function setAccessToken(token: string | undefined) {
+  accessToken = token;
+}
+export function getAccessToken(): string | undefined {
+  return accessToken;
+}
+
 export async function apiFetch(
   endpoint: string,
   options?: RequestInit,
   isForm?: boolean,
 ) {
+  if (!accessToken) {
+    accessToken = await SecureStore.getItemAsync("accessToken");
+  }
   const url = `${BASE_URL}/api/v1${endpoint}`;
   const headers: Record<string, string> = {};
   if (!isForm) headers["Content-Type"] = "application/json";
+  if (accessToken) headers["Authorization"] = `Bearer ${accessToken}`;
   return fetch(url, {
     credentials: "include",
     ...options,
