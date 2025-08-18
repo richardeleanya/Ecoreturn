@@ -6,17 +6,26 @@ import { subDays, format } from "date-fns";
 export class AnalyticsService {
   constructor(private prisma: PrismaService) {}
 
-  async getBrandAnalytics(brandId?: string, days = 14) {
+  async getBrandAnalytics(
+    brandId?: string,
+    days = 14,
+    start?: Date,
+    end?: Date
+  ) {
     let brand = brandId
       ? await this.prisma.brand.findUnique({ where: { id: brandId } })
       : await this.prisma.brand.findFirst();
     if (!brand) throw new Error("Brand not found");
 
-    const start = subDays(new Date(), days);
+    const rangeStart = start ?? subDays(new Date(), days);
+    const rangeEnd = end ?? new Date();
     const returns = await this.prisma.return.findMany({
       where: {
         product: { brandId: brand.id },
-        createdAt: { gte: start },
+        createdAt: {
+          gte: rangeStart,
+          lte: rangeEnd,
+        },
       },
       include: { product: true, campaign: true, partnerLocation: true },
     });
@@ -51,8 +60,10 @@ export class AnalyticsService {
 
     // Timeseries
     const dateMap = new Map<string, { returnsCount: number; spendPence: number }>();
-    for (let i = 0; i < days; i++) {
-      const date = format(subDays(new Date(), days - i - 1), "yyyy-MM-dd");
+    const totalDays =
+      (rangeEnd.getTime() - rangeStart.getTime()) / (1000 * 60 * 60 * 24);
+    for (let i = 0; i < Math.ceil(totalDays); i++) {
+      const date = format(subDays(rangeEnd, Math.ceil(totalDays) - i - 1), "yyyy-MM-dd");
       dateMap.set(date, { returnsCount: 0, spendPence: 0 });
     }
     returns.forEach((r) => {
