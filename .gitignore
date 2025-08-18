@@ -1,0 +1,35 @@
+# Node
+node_modules/
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Env files
+.env
+.env.*.local
+.env.local
+!.env.example
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+coverage/
+ios/build/
+android/build/
+.expo/
+.expo-shared/
+
+# Logs
+logs/
+*.log
+
+# IDEs
+.vscode/
+.idea/
+.DS_Store
+
+# Docker
+docker-data/
