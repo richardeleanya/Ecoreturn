@@ -223,3 +223,57 @@ export const users = {
     return api.get("/users").then((r) => r.data);
   },
 };
+
+export const analytics = {
+  async brand(brandId?: string, days?: number) {
+    return api.get("/analytics/brand", { params: { brandId, days } }).then((r) => r.data);
+  },
+  async admin(days?: number) {
+    return api.get("/analytics/admin", { params: { days } }).then((r) => r.data);
+  },
+};
+
+export const admin = {
+  brands: {
+    async list() {
+      return api.get("/admin/brands").then((r) => r.data);
+    },
+    async create(data: any) {
+      return api.post("/admin/brands", data).then((r) => r.data);
+    },
+    async update(id: string, data: any) {
+      return api.put(`/admin/brands/${id}`, data).then((r) => r.data);
+    },
+    async remove(id: string) {
+      return api.delete(`/admin/brands/${id}`).then((r) => r.data);
+    },
+  },
+  locations: {
+    async list() {
+      return api.get("/admin/locations").then((r) => r.data);
+    },
+    async create(data: any) {
+      return api.post("/admin/locations", data).then((r) => r.data);
+    },
+    async update(id: string, data: any) {
+      return api.put(`/admin/locations/${id}`, data).then((r) => r.data);
+    },
+    async remove(id: string) {
+      return api.delete(`/admin/locations/${id}`).then((r) => r.data);
+    },
+  },
+  products: {
+    async list() {
+      return api.get("/admin/products").then((r) => r.data);
+    },
+    async create(data: any) {
+      return api.post("/admin/products", data).then((r) => r.data);
+    },
+    async update(id: string, data: any) {
+      return api.put(`/admin/products/${id}`, data).then((r) => r.data);
+    },
+    async remove(id: string) {
+      return api.delete(`/admin/products/${id}`).then((r) => r.data);
+    },
+  },
+};

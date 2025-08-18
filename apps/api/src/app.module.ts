@@ -11,6 +11,10 @@ import { WalletModule } from './wallet/wallet.module';
 import { QueuesModule } from './queues/queues.module';
 import { LocationsModule } from './locations/locations.module';
 import { CampaignsModule } from './campaigns/campaigns.module';
+import { AnalyticsModule } from './analytics/analytics.module';
+import { BrandsAdminModule } from './admin/brands.module';
+import { LocationsAdminModule } from './admin/locations.module';
+import { ProductsAdminModule } from './admin/products.module';
 
 @Module({
   imports: [
@@ -26,6 +30,10 @@ import { CampaignsModule } from './campaigns/campaigns.module';
     QueuesModule,
     LocationsModule,
     CampaignsModule,
+    AnalyticsModule,
+    BrandsAdminModule,
+    LocationsAdminModule,
+    ProductsAdminModule,
   ],
 })
 export class AppModule {}
