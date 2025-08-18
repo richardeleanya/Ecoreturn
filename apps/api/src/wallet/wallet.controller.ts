@@ -17,7 +17,9 @@ export class WalletController {
 
   @Get('history')
   async getHistory(@Req() req: any) {
-    return this.walletService.getHistory(req.user.userId);
+    // Return ordered transactions
+    const txs = await this.walletService.getTransactions(req.user.userId);
+    return txs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }
 
   @Post('withdraw')
