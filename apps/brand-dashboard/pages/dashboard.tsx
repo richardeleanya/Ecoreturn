@@ -1,14 +1,19 @@
 import { useEffect, useState } from "react";
 import Header from "../components/Header";
-import { returns, wallet } from "sdk";
+import { analytics } from "sdk";
+import { Charts } from "../components/Charts";
 
 export default function Dashboard() {
-  const [returnsCount, setReturnsCount] = useState<number>(0);
-  const [balance, setBalance] = useState<number>(0);
+  const [kpi, setKpi] = useState<{ returnsCount: number; spendPence: number; avgRewardPence: number }>({ returnsCount: 0, spendPence: 0, avgRewardPence: 0 });
+  const [timeseries, setTimeseries] = useState<{ date: string; returnsCount: number; spendPence: number }[]>([]);
+  const [campaignPerformance, setCampaignPerformance] = useState<{ name: string; spendPence: number }[]>([]);
 
   useEffect(() => {
-    returns.history().then((data) => setReturnsCount(data.length));
-    wallet.balance().then((data) => setBalance(data.balancePence / 100));
+    analytics.brand().then((data) => {
+      setKpi(data.kpi);
+      setTimeseries(data.timeseries);
+      setCampaignPerformance(data.campaignPerformance);
+    });
   }, []);
 
   return (
@@ -16,20 +21,21 @@ export default function Dashboard() {
       <Header />
       <div className="p-6">
         <h1 className="text-2xl font-bold mb-4">Brand Dashboard</h1>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           <div className="bg-white rounded shadow p-4">
             <div className="text-gray-500">Returns Count</div>
-            <div className="text-2xl font-bold">{returnsCount}</div>
+            <div className="text-2xl font-bold">{kpi.returnsCount}</div>
           </div>
           <div className="bg-white rounded shadow p-4">
-            <div className="text-gray-500">Balance (£)</div>
-            <div className="text-2xl font-bold">{balance.toFixed(2)}</div>
+            <div className="text-gray-500">Spend (£)</div>
+            <div className="text-2xl font-bold">{(kpi.spendPence / 100).toFixed(2)}</div>
           </div>
           <div className="bg-white rounded shadow p-4">
-            <div className="text-gray-500">ROI</div>
-            <div className="text-2xl font-bold">N/A</div>
+            <div className="text-gray-500">Avg Reward (£)</div>
+            <div className="text-2xl font-bold">{(kpi.avgRewardPence / 100).toFixed(2)}</div>
           </div>
         </div>
+        <Charts timeseries={timeseries} campaignPerformance={campaignPerformance} />
       </div>
     </>
   );
