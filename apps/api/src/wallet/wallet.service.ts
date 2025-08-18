@@ -1,34 +1,37 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 
 @Injectable()
 export class WalletService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    @InjectQueue('withdrawal') private queue: Queue,
+  ) {}
 
-  async getBalance(userId: string) {
-    const wallet = await this.prisma.wallet.findUnique({ where: { userId } });
-    if (!wallet) throw new NotFoundException('Wallet not found');
-    return { balancePence: wallet.balancePence };
+  async getWallet(userId: string) {
+    return this.prisma.wallet.findUnique({ where: { userId } });
   }
 
-  async getHistory(userId: string) {
-    const wallet = await this.prisma.wallet.findUnique({ where: { userId }, include: { transactions: true } });
-    if (!wallet) throw new NotFoundException('Wallet not found');
-    return wallet.transactions;
+  async getTransactions(userId: string) {
+    const wallet = await this.getWallet(userId);
+    if (!wallet) throw new BadRequestException('Wallet not found');
+    return this.prisma.transaction.findMany({ where: { walletId: wallet.id } });
   }
 
-  async withdraw(userId: string, amountPence: number) {
-    // Create WithdrawalRequest and enqueue job
-    const wallet = await this.prisma.wallet.findUnique({ where: { userId } });
-    if (!wallet || wallet.balancePence < amountPence) throw new NotFoundException('Insufficient balance');
+  async requestWithdrawal(userId: string, amountPence: number) {
+    const wallet = await this.getWallet(userId);
+    if (!wallet || wallet.balancePence < amountPence)
+      throw new BadRequestException('Insufficient balance');
     const wr = await this.prisma.withdrawalRequest.create({
       data: {
         userId,
         amountPence,
-        status: 'REQUESTED'
-      }
+        status: 'REQUESTED',
+      },
     });
-    // TODO: Enqueue BullMQ job
+    await this.queue.add('withdrawal', { userId, amountPence, wrId: wr.id });
     return wr;
   }
 }

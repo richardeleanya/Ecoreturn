@@ -1,37 +1,58 @@
-import { Controller, Post, UploadedFile, UseInterceptors } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  UseInterceptors,
+  UploadedFile,
+  Req,
+  Res,
+} from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
-import { ApiTags } from '@nestjs/swagger';
+import { Request, Response } from 'express';
+import { PrismaService } from '../prisma/prisma.service';
+import { customAlphabet } from 'nanoid';
 import * as crypto from 'crypto';
-import * as fs from 'fs';
 import * as path from 'path';
 
-@ApiTags('Uploads')
 @Controller('api/v1/uploads')
 export class UploadsController {
+  constructor(private prisma: PrismaService) {}
+
   @Post('photos')
   @UseInterceptors(
-    FileInterceptor('file', {
+    FileInterceptor('photo', {
       storage: diskStorage({
         destination: './uploads',
         filename: (req, file, cb) => {
           const ext = path.extname(file.originalname);
-          const filename = `${crypto.randomUUID()}${ext}`;
-          cb(null, filename);
+          const id = customAlphabet('1234567890abcdef', 16)();
+          cb(null, `${id}${ext}`);
         },
       }),
     }),
   )
-  async uploadPhoto(@UploadedFile() file: Express.Multer.File) {
-    // Compute basic hash for MVP
-    const data = fs.readFileSync(file.path);
-    const hash = crypto.createHash('sha256').update(data).digest('hex');
-    // Store ReturnPhoto in DB as needed (omitted for brevity)
-    return {
-      url: `/uploads/${file.filename}`,
-      hash,
-      width: null,
-      height: null,
-    };
+  async uploadPhoto(
+    @UploadedFile() file: Express.Multer.File,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    const hash = crypto.createHash('sha256').update(file.buffer || file.path).digest('hex');
+    const url = `/uploads/${file.filename}`;
+    // Save ReturnPhoto in DB
+    const photo = await this.prisma.returnPhoto.create({
+      data: {
+        url,
+        hash,
+        width: null,
+        height: null,
+      },
+    });
+    return res.json({
+      id: photo.id,
+      url: photo.url,
+      hash: photo.hash,
+      width: photo.width,
+      height: photo.height,
+    });
   }
 }

@@ -2,20 +2,22 @@ import {
   Controller,
   Post,
   Body,
-  Res,
   Req,
+  Res,
   Get,
   UseGuards,
   HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { RegisterDto } from './dto/register.dto';
-import { LoginDto } from './dto/login.dto';
-import { Response, Request } from 'express';
+import { LoginDto, RegisterDto } from './dto';
+import { Request, Response } from 'express';
 import { JwtAuthGuard } from '../common/jwt-auth.guard';
-import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import { Roles } from '../common/roles.decorator';
+import { RolesGuard } from '../common/roles.guard';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 
-@ApiTags('Auth')
+@ApiTags('auth')
 @Controller('api/v1/auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
@@ -26,12 +28,14 @@ export class AuthController {
   }
 
   @Post('login')
-  @HttpCode(200)
   async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
     const { accessToken, refreshToken } = await this.authService.login(dto);
+    // Set refresh token in HttpOnly cookie
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
       sameSite: 'lax',
+      path: '/api/v1/auth/refresh',
+      secure: process.env.NODE_ENV === 'production',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
     return { accessToken };
@@ -39,35 +43,40 @@ export class AuthController {
 
   @Post('refresh')
   async refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    // Validate refresh token from cookie, rotate, set new tokens
-    // For brevity, this is a simplified version
-    const { refreshToken } = req.cookies;
-    if (!refreshToken) return { accessToken: null };
-    // TODO: Implement reuse detection and rotation logic
-    const payload = {}; // decode and validate
-    // Generate new tokens, store new refresh
-    const tokens = await this.authService.generateTokens(payload['sub'], payload['role']);
+    const refreshToken = req.cookies['refreshToken'];
+    if (!refreshToken) {
+      return { accessToken: null };
+    }
+    const user = await this.authService.verifyRefreshToken(refreshToken);
+    // Rotate refresh token
+    const tokens = await this.authService.generateTokens(user.id, user.role);
+    await this.authService.storeRefreshToken(user.id, tokens.refreshToken);
     res.cookie('refreshToken', tokens.refreshToken, {
       httpOnly: true,
       sameSite: 'lax',
+      path: '/api/v1/auth/refresh',
+      secure: process.env.NODE_ENV === 'production',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
     return { accessToken: tokens.accessToken };
   }
 
   @Post('logout')
-  @UseGuards(JwtAuthGuard)
-  async logout(@Req() req: any, @Res({ passthrough: true }) res: Response) {
-    // Invalidate refresh token
-    await this.authService.logout(req.user.userId);
-    res.clearCookie('refreshToken');
+  @HttpCode(HttpStatus.OK)
+  async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const refreshToken = req.cookies['refreshToken'];
+    if (refreshToken) {
+      const user = await this.authService.verifyRefreshToken(refreshToken);
+      await this.authService.logout(user.id);
+    }
+    res.clearCookie('refreshToken', { path: '/api/v1/auth/refresh' });
     return { success: true };
   }
 
-  @Get('profile')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth()
-  async profile(@Req() req: any) {
-    return this.authService.profile(req.user.userId);
+  @Get('profile')
+  async getProfile(@Req() req: Request) {
+    return { user: req['user'] };
   }
 }
