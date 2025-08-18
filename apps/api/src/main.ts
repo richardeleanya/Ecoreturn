@@ -1,88 +1,73 @@
-import { NestFactory } from "@nestjs/core";
-import { AppModule } from "./app.module";
-import helmet from "helmet";
-import * as cookieParser from "cookie-parser";
-import { ConfigService } from "@nestjs/config";
-import { ValidationPipe } from "@nestjs/common";
-import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
-import { json, urlencoded } from "express";
-import * as Sentry from "@sentry/node";
-import { TransformInterceptor } from "./common/interceptors/transform.interceptor";
-import rateLimit from "express-rate-limit";
-import { join } from "path";
-import { NestExpressApplication } from "@nestjs/platform-express";
-import { existsSync, mkdirSync } from "fs";
+import { NestFactory } from '@nestjs/core';
+import { AppModule } from './app.module';
+import { ConfigService } from '@nestjs/config';
+import { ValidationPipe } from '@nestjs/common';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import helmet from 'helmet';
+import * as cookieParser from 'cookie-parser';
+import { NestExpressApplication } from '@nestjs/platform-express';
+import { rateLimit } from 'express-rate-limit';
+import { Logger } from '@nestjs/common';
+import * as Sentry from '@sentry/node';
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
-
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, { cors: false });
   const configService = app.get(ConfigService);
 
-  // Sentry
-  const sentryDsn = configService.get("SENTRY_DSN");
-  if (sentryDsn) {
-    Sentry.init({ dsn: sentryDsn });
-  }
-
-  // Helmet
+  // Helmet for HTTP security
   app.use(helmet());
 
-  // Express body size
-  app.use(json({ limit: "10mb" }));
-  app.use(urlencoded({ extended: true, limit: "10mb" }));
-
-  // Cookie Parser
-  app.use(cookieParser());
-
   // CORS
-  const allowedOrigins = (configService.get("NEXT_ALLOWED_ORIGINS") || "http://localhost:3000").split(",");
+  const allowedOrigins = (configService.get<string>('CORS_ALLOWLIST') || '').split(',').filter(Boolean);
   app.enableCors({
-    origin: allowedOrigins,
+    origin: allowedOrigins.length
+      ? (origin, cb) =>
+          !origin || allowedOrigins.includes(origin) ? cb(null, true) : cb(new Error('CORS blocked'), false)
+      : true,
     credentials: true,
   });
 
-  // Rate Limiting
+  // Rate limiting
   app.use(
     rateLimit({
       windowMs: 15 * 60 * 1000,
-      max: 300,
+      max: 200,
       standardHeaders: true,
       legacyHeaders: false,
-    })
+    }),
   );
 
-  // Static /uploads for dev only
-  const uploadsPath = join(process.cwd(), "uploads");
-  if (process.env.NODE_ENV !== "production") {
-    if (!existsSync(uploadsPath)) mkdirSync(uploadsPath);
-    app.use("/uploads", app.getHttpAdapter().getInstance().static(uploadsPath));
-  }
+  // Cookie parser
+  app.use(cookieParser());
 
-  // Global Validation Pipe
+  // Global validation pipe
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
       forbidNonWhitelisted: true,
       transform: true,
-    })
+    }),
   );
 
-  // Transform interceptor (standard response format)
-  app.useGlobalInterceptors(new TransformInterceptor());
+  // Sentry (env-gated)
+  const sentryDsn = configService.get<string>('SENTRY_DSN');
+  if (sentryDsn) {
+    Sentry.init({ dsn: sentryDsn, tracesSampleRate: 0.1 });
+  }
 
-  // Swagger
+  // Swagger setup
   const swaggerConfig = new DocumentBuilder()
-    .setTitle("EcoReturn API")
-    .setDescription("Enterprise-grade Circular Economy Rewards API")
-    .setVersion("1.0")
+    .setTitle('EcoReturn API')
+    .setDescription('API docs for EcoReturn')
+    .setVersion('1.0')
     .addBearerAuth()
     .build();
   const document = SwaggerModule.createDocument(app, swaggerConfig);
-  SwaggerModule.setup("docs", app, document);
+  SwaggerModule.setup('docs', app, document);
 
-  await app.listen(configService.get("PORT") || 4000);
-  // eslint-disable-next-line no-console
-  console.log(`EcoReturn API listening at http://localhost:${configService.get("PORT") || 4000}`);
+  const port = configService.get<number>('PORT') || 3000;
+  await app.listen(port);
+  Logger.log(`API running on http://localhost:${port}`);
+  Logger.log(`Swagger docs: http://localhost:${port}/docs`);
 }
-
 bootstrap();

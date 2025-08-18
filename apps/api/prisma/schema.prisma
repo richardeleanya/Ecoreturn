@@ -7,24 +7,22 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// Enums
 enum AuthProvider {
   EMAIL
   GOOGLE
   APPLE
 }
-
 enum UserRole {
   CONSUMER
   BRAND
   PARTNER
   ADMIN
 }
-
 enum UserStatus {
   ACTIVE
   SUSPENDED
 }
-
 enum PackageType {
   ALUMINUM
   PLASTIC
@@ -32,30 +30,25 @@ enum PackageType {
   CARDBOARD
   COMPOSITE
 }
-
 enum CampaignStatus {
   ACTIVE
   PAUSED
   ENDED
 }
-
 enum ReturnStatus {
   PENDING
   APPROVED
   REJECTED
 }
-
 enum TransactionType {
   CREDIT
   DEBIT
 }
-
 enum TransactionRefType {
   RETURN
   WITHDRAWAL
   ADJUSTMENT
 }
-
 enum WithdrawalStatus {
   REQUESTED
   PROCESSING
@@ -63,6 +56,7 @@ enum WithdrawalStatus {
   FAILED
 }
 
+// Models
 model User {
   id               String      @id @default(uuid())
   createdAt        DateTime    @default(now())
@@ -84,116 +78,116 @@ model User {
   brands           Brand[]     @relation("BrandUsers")
   wallet           Wallet?
   returns          Return[]
-  transactions     Transaction[]
   withdrawalRequests WithdrawalRequest[]
+  adminAudits      AdminAudit[] @relation("AdminAuditActor")
 }
 
 model Brand {
-  id          String      @id @default(uuid())
+  id          String       @id @default(uuid())
   name        String
   logoUrl     String?
   description String?
   website     String?
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  users       User[]      @relation("BrandUsers")
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  users       User[]       @relation("BrandUsers")
   locations   PartnerLocation[]
   products    Product[]
   campaigns   Campaign[]
 }
 
 model PartnerLocation {
-  id           String     @id @default(uuid())
-  brandId      String?
-  brand        Brand?     @relation(fields: [brandId], references: [id])
-  name         String
-  address      String
-  city         String
-  postcode     String
-  lat          Float
-  lng          Float
-  hoursJson    Json?
-  contactEmail String?
-  contactPhone String?
-  status       UserStatus @default(ACTIVE)
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
-  returns      Return[]
+  id            String      @id @default(uuid())
+  brand         Brand?      @relation(fields: [brandId], references: [id])
+  brandId       String?
+  name          String
+  address       String
+  city          String
+  postcode      String
+  lat           Float
+  lng           Float
+  hoursJson     Json?
+  contactEmail  String?
+  contactPhone  String?
+  status        UserStatus  @default(ACTIVE)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  returns       Return[]
 }
 
 model Product {
-  id          String      @id @default(uuid())
-  brandId     String
-  brand       Brand       @relation(fields: [brandId], references: [id])
-  name        String
-  barcode     String      @unique
-  sku         String?
-  packageType PackageType
-  imageUrl    String?
-  eligibility Json?
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  rewardRules RewardRule[]
-  returns     Return[]
+  id            String      @id @default(uuid())
+  brand         Brand       @relation(fields: [brandId], references: [id])
+  brandId       String
+  name          String
+  barcode       String      @unique
+  sku           String?
+  packageType   PackageType
+  imageUrl      String?
+  eligibility   Json?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  rewardRules   RewardRule[]
+  returns       Return[]
 }
 
 model Campaign {
-  id            String        @id @default(uuid())
+  id            String      @id @default(uuid())
+  brand         Brand       @relation(fields: [brandId], references: [id])
   brandId       String
-  brand         Brand         @relation(fields: [brandId], references: [id])
   name          String
   startAt       DateTime
   endAt         DateTime
-  rewardPerItem Decimal       @db.Decimal(10,2)
+  rewardPerItem Decimal     @db.Decimal(10,2)
   geoTargetJson Json?
   budgetPence   Int
   status        CampaignStatus
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
   returns       Return[]
 }
 
 model RewardRule {
   id              String       @id @default(uuid())
-  productId       String?
   product         Product?     @relation(fields: [productId], references: [id])
+  productId       String?
   packageType     PackageType?
   baseRewardPence Int
-  multiplier      Decimal      @db.Decimal(5,2) @default(1.0)
+  multiplier      Decimal      @default(1.0) @db.Decimal(5,2)
   createdAt       DateTime     @default(now())
 }
 
 model Return {
-  id               String         @id @default(uuid())
-  userId           String
-  user             User           @relation(fields: [userId], references: [id])
-  productId        String
-  product          Product        @relation(fields: [productId], references: [id])
-  campaignId       String?
-  campaign         Campaign?      @relation(fields: [campaignId], references: [id])
+  id                String      @id @default(uuid())
+  user              User        @relation(fields: [userId], references: [id])
+  userId            String
+  product           Product     @relation(fields: [productId], references: [id])
+  productId         String
+  campaign          Campaign?   @relation(fields: [campaignId], references: [id])
+  campaignId        String?
+  partnerLocation   PartnerLocation? @relation(fields: [partnerLocationId], references: [id])
   partnerLocationId String?
-  partnerLocation  PartnerLocation? @relation(fields: [partnerLocationId], references: [id])
-  status           ReturnStatus
-  rewardPence      Int
-  scannedAt        DateTime
-  droppedAt        DateTime?
-  approvedAt       DateTime?
-  rejectionReason  String?
-  gpsLat           Float
-  gpsLng           Float
-  deviceId         String
-  photoId          String?
-  photo            ReturnPhoto?   @relation(fields: [photoId], references: [id])
-  fraudReview      Boolean        @default(false)
-  fraudScore       Int            @default(0)
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
+  status            ReturnStatus
+  rewardPence       Int
+  scannedAt         DateTime
+  droppedAt         DateTime?
+  approvedAt        DateTime?
+  rejectionReason   String?
+  gpsLat            Float
+  gpsLng            Float
+  deviceId          String
+  photo             ReturnPhoto? @relation(fields: [photoId], references: [id])
+  photoId           String?
+  fraudReview       Boolean      @default(false)
+  fraudScore        Int          @default(0)
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
 }
 
 model ReturnPhoto {
   id        String   @id @default(uuid())
-  returnId  String?
   return    Return?  @relation(fields: [returnId], references: [id])
+  returnId  String?
   url       String
   width     Int?
   height    Int?
@@ -202,53 +196,42 @@ model ReturnPhoto {
 }
 
 model Wallet {
-  id          String   @id @default(uuid())
-  userId      String   @unique
-  user        User     @relation(fields: [userId], references: [id])
-  balancePence Int     @default(0)
-  transactions Transaction[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String        @id @default(uuid())
+  user          User          @relation(fields: [userId], references: [id])
+  userId        String        @unique
+  balancePence  Int           @default(0)
+  transactions  Transaction[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 }
 
 model Transaction {
-  id           String            @id @default(uuid())
+  id           String           @id @default(uuid())
+  wallet       Wallet           @relation(fields: [walletId], references: [id])
   walletId     String
-  wallet       Wallet            @relation(fields: [walletId], references: [id])
   type         TransactionType
   amountPence  Int
   refType      TransactionRefType
   refId        String
-  createdAt    DateTime          @default(now())
+  createdAt    DateTime         @default(now())
 }
 
 model WithdrawalRequest {
-  id                String           @id @default(uuid())
-  userId            String
-  user              User             @relation(fields: [userId], references: [id])
-  amountPence       Int
-  status            WithdrawalStatus
-  stripeTransferId  String?
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
+  id               String           @id @default(uuid())
+  user             User             @relation(fields: [userId], references: [id])
+  userId           String
+  amountPence      Int
+  status           WithdrawalStatus
+  stripeTransferId String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
 }
 
 model AdminAudit {
   id           String   @id @default(uuid())
-  actorUserId  String
+  actorUser    User?    @relation("AdminAuditActor", fields: [actorUserId], references: [id])
+  actorUserId  String?
   action       String
   meta         Json
   createdAt    DateTime @default(now())
-}
-
-model RefreshToken {
-  id           String   @id @default(uuid())
-  userId       String
-  user         User     @relation(fields: [userId], references: [id])
-  token        String
-  isRevoked    Boolean  @default(false)
-  expiresAt    DateTime
-  createdAt    DateTime @default(now())
-  replacedById String?
-  replacedBy   RefreshToken? @relation("ReplacedBy", fields: [replacedById], references: [id])
 }
