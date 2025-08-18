@@ -28,6 +28,9 @@ async function bootstrap() {
   const corsAllowlist =
     process.env.CORS_ALLOWLIST?.split(',').map((url) => url.trim()) ||
     process.env.NEXT_ALLOWED_ORIGINS?.split(',').map((url) => url.trim()) ||
+    ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002'];
+    process.env.CORS_ALLOWLIST?.split(',').map((url) => url.trim()) ||
+    process.env.NEXT_ALLOWED_ORIGINS?.split(',').map((url) => url.trim()) ||
     ['http://localhost:3000'];
   app.enableCors({
     origin: corsAllowlist,

@@ -54,36 +54,23 @@ npm run mobile:android # Android emulator
 
 ### Environment Variables
 
-```bash
+```env
 # Database
-DATABASE_URL=mongodb://localhost:27017/ecoreturn
+POSTGRES_URL=postgres://user:pass@localhost:5432/ecoreturn
 REDIS_URL=redis://localhost:6379
+
+# CORS allowlist (comma-separated)
+CORS_ALLOWLIST=http://localhost:3000,http://localhost:3001,http://localhost:3002
 
 # Authentication
 JWT_SECRET=your_jwt_secret_key
-BCRYPT_ROUNDS=12
 
 # Payment Processing
 STRIPE_SECRET_KEY=sk_test_...
 STRIPE_WEBHOOK_SECRET=whsec_...
 
-# External Services
-AWS_ACCESS_KEY_ID=your_aws_key
-AWS_SECRET_ACCESS_KEY=your_aws_secret
-AWS_REGION=eu-west-2
-
-# Barcode API
-GS1_API_KEY=your_gs1_api_key
-PRODUCT_API_URL=https://api.gs1.org/v1
-
-# Mobile App Config
-MOBILE_API_URL=https://api.ecoreturn.com
-MOBILE_VERSION=1.0.0
-```
-
-## 🏗️ Architecture
-
-### System Overview
+# Monitoring & Analytics
+SENTRY_DSN=
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │   Mobile Apps   │    │   Web Portal    │    │  Admin Panel    │
