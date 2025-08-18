@@ -22,7 +22,7 @@ export default function Login() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50">
       <form onSubmit={handleLogin} className="bg-white rounded-lg shadow p-6 w-96 space-y-4">
-        <h2 className="text-xl font-bold mb-2">Brand Login</h2>
+        <h2 className="text-xl font-bold mb-2">Admin Login</h2>
         <input
           type="email"
           className="w-full border px-3 py-2 rounded"
@@ -40,7 +40,7 @@ export default function Login() {
           required
         />
         {error && <div className="text-red-600">{error}</div>}
-        <button type="submit" className="w-full bg-blue-600 text-white rounded py-2">Log In</button>
+        <button type="submit" className="w-full bg-gray-700 text-white rounded py-2">Log In</button>
       </form>
     </div>
   );
