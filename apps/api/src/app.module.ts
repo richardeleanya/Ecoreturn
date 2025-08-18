@@ -15,6 +15,8 @@ import { AnalyticsModule } from './analytics/analytics.module';
 import { BrandsAdminModule } from './admin/brands.module';
 import { LocationsAdminModule } from './admin/locations.module';
 import { ProductsAdminModule } from './admin/products.module';
+import { UsersAdminModule } from './admin/users-admin.module';
+import { AuditsAdminModule } from './admin/audits-admin.module';
 
 @Module({
   imports: [
@@ -34,6 +36,8 @@ import { ProductsAdminModule } from './admin/products.module';
     BrandsAdminModule,
     LocationsAdminModule,
     ProductsAdminModule,
+    UsersAdminModule,
+    AuditsAdminModule,
   ],
 })
 export class AppModule {}

@@ -126,6 +126,21 @@ async function main() {
     },
   });
 
+  // ADMIN user
+  const admin = await prisma.user.upsert({
+    where: { email: "demo_admin@ecoreturn.com" },
+    update: {},
+    create: {
+      email: "demo_admin@ecoreturn.com",
+      provider: AuthProvider.EMAIL,
+      role: UserRole.ADMIN,
+      status: UserStatus.ACTIVE,
+      passwordHash,
+      firstName: "Admin",
+      lastName: "User",
+    },
+  });
+
   console.log("Seed complete.");
 }
 

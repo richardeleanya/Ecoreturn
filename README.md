@@ -515,6 +515,20 @@ Special thanks to:
 - **Our Beta Users** for invaluable feedback
 - **Environmental Partners** for sustainability guidance
 
+## Admin Role Management & Audits
+
+- **Seeded Admin User**:  
+  Email: `demo_admin@ecoreturn.com`  
+  Password: `Passw0rd!`
+- **Endpoints**:
+  - `/api/v1/admin/users`: List users; update role/status (ADMIN only)
+  - `/api/v1/admin/audits`: List audit logs (ADMIN only)
+- **UI**:
+  - `/admin/users`: Change user roles or suspend accounts. All changes are audited.
+  - `/admin/audits`: View audit history and filter by actor, action, or date.
+- **Audit Events**:  
+  All user role/status changes are logged with before/after values and actor.
+
 ---
 
 **Made with ❤️ for the planet** 🌍

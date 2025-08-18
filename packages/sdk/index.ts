@@ -224,13 +224,23 @@ export const users = {
   },
 };
 
-export const analytics = {
-  async brand(brandId?: string, days?: number) {
-    return api.get("/analytics/brand", { params: { brandId, days } }).then((r) => r.data);
-  },
-  async admin(days?: number) {
-    return api.get("/analytics/admin", { params: { days } }).then((r) => r.data);
-  },
+export const usersAdmin = {
+  list: async () => api.get("/admin/users").then((r) => r.data),
+  updateRole: async (userId: string, role: string) =>
+    api.put(`/admin/users/${userId}/role`, { role }).then((r) => r.data),
+  updateStatus: async (userId: string, status: string) =>
+    api.put(`/admin/users/${userId}/status`, { status }).then((r) => r.data),
+};
+
+export const audits = {
+  list: async (params: {
+    actorId?: string;
+    action?: string;
+    start?: string;
+    end?: string;
+    page?: number;
+    pageSize?: number;
+  }) => api.get("/admin/audits", { params }).then((r) => r.data),
 };
 
 export const admin = {
