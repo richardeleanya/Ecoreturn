@@ -26,13 +26,18 @@ ChartJS.register(
 
 type Timeseries = Array<{ date: string; returnsCount: number; spendPence: number }>;
 type CampaignPerf = Array<{ name: string; spendPence: number }>;
+type BarData = Array<{ name: string; returnsCount: number; spendPence: number }>;
 
 export function Charts({
   timeseries,
   campaignPerformance,
+  topProducts,
+  topLocations,
 }: {
   timeseries: Timeseries;
   campaignPerformance: CampaignPerf;
+  topProducts: BarData;
+  topLocations: BarData;
 }) {
   const lineData = {
     labels: timeseries.map((d) => d.date),
@@ -79,6 +84,28 @@ export function Charts({
     ]
   };
 
+  const productData = {
+    labels: topProducts.map((p) => p.name),
+    datasets: [
+      {
+        label: "Returns",
+        data: topProducts.map((p) => p.returnsCount),
+        backgroundColor: "#f59e42"
+      }
+    ]
+  };
+
+  const locationData = {
+    labels: topLocations.map((l) => l.name),
+    datasets: [
+      {
+        label: "Returns",
+        data: topLocations.map((l) => l.returnsCount),
+        backgroundColor: "#7c3aed"
+      }
+    ]
+  };
+
   return (
     <div className="space-y-8">
       <div>
@@ -88,6 +115,14 @@ export function Charts({
       <div>
         <h3 className="text-lg font-bold mb-2">Campaign Spend</h3>
         <Bar data={barData} />
+      </div>
+      <div>
+        <h3 className="text-lg font-bold mb-2">Top Products</h3>
+        <Bar data={productData} />
+      </div>
+      <div>
+        <h3 className="text-lg font-bold mb-2">Top Locations</h3>
+        <Bar data={locationData} />
       </div>
     </div>
   );
