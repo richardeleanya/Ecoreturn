@@ -239,6 +239,42 @@ GET  /api/v1/locations/search    # Search locations
 }
 ```
 
+## 🔒 Security, Fraud, and Compliance
+
+### API Security
+- **HTTP Headers**: Uses [Helmet](https://helmetjs.github.io/) to secure API endpoints.
+- **Rate Limiting**: Per-IP rate limiting applied to all public API routes.
+- **CORS**: Configured with allowlist for trusted origins.
+- **Input Validation**: All endpoints validate input using DTOs and [Zod](https://zod.dev/); all user input is sanitized against XSS and NoSQL injection.
+- **Authentication**: JWT with refresh token rotation and reuse detection; tokens invalidated on logout.
+- **RBAC Guards**: Role-based access control enforced and tested for each protected resource.
+
+### Fraud Detection Basics
+- Every return is stored with `deviceId`, GPS location, perceptual `photoHash`, and timing data. Risk scoring is applied based on threshold rules (e.g., rapid-fire returns, duplicate device/photo, location mismatch).
+- Suspicious returns are flagged with `fraudReview: true` for manual review; clean returns are auto-approved in MVP.
+- Fraud telemetry is logged for analytics.
+
+### Telemetry & Monitoring
+- [Sentry](https://sentry.io/) initialized for API, web, and mobile apps (behind environment variable flag).
+- Global error handlers and structured logging using [Pino](https://getpino.io/) (or NestJS Logger in JSON mode for prod).
+- All logs are structured and support GDPR-compliant redaction.
+
+### GDPR & Data Privacy
+- **Privacy Policy**: User data is processed in compliance with GDPR. Personal data is only retained as long as required for service delivery and regulatory purposes.
+- **Data Retention**: Transactional records are retained for regulatory and anti-fraud reasons; PII is anonymized on account deletion.
+- **Account Deletion**: Users can delete their account at any time; this triggers anonymization of user data, deactivation of their wallet, and removal of all unrequired PII.
+- **DPIA**: A Data Protection Impact Assessment (DPIA) is conducted and reviewed before launch (see checklist below).
+
+### DPIA Checklist (Placeholder)
+- [ ] Data flows mapped and documented
+- [ ] Lawful basis for processing established
+- [ ] Data minimization reviewed
+- [ ] Risk assessment (accidental loss, unauthorized access, profiling)
+- [ ] Mitigations for high-risk processing
+- [ ] Data subject rights procedures (access, deletion, portability)
+- [ ] Incident response plan tested
+
+---
 ## 🧪 Testing
 
 ### Running Tests
