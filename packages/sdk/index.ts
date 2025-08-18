@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios, { AxiosRequestConfig, AxiosError } from "axios";
 import type {
   User,
   Product,
@@ -10,6 +10,27 @@ import type {
   PartnerLocation,
 } from "shared";
 
+let _token: string | undefined = undefined;
+
+export const authStore = {
+  setToken(token?: string) {
+    _token = token || undefined;
+    if (typeof window !== "undefined") {
+      if (token) localStorage.setItem("token", token);
+      else localStorage.removeItem("token");
+    }
+  },
+  getToken(): string | undefined {
+    if (_token) return _token;
+    if (typeof window !== "undefined") {
+      const t = localStorage.getItem("token");
+      _token = t || undefined;
+      return _token;
+    }
+    return undefined;
+  },
+};
+
 const baseURL =
   typeof window === "undefined"
     ? process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:3000"
@@ -20,17 +41,90 @@ export const api = axios.create({
   withCredentials: true,
 });
 
+let isRefreshing = false;
+let failedQueue: {
+  resolve: (value?: unknown) => void;
+  reject: (err?: unknown) => void;
+  config: AxiosRequestConfig;
+}[] = [];
+
+function processQueue(error: any, token: string | null = null) {
+  failedQueue.forEach((prom) => {
+    if (error) prom.reject(error);
+    else {
+      if (token && prom.config.headers)
+        prom.config.headers["Authorization"] = "Bearer " + token;
+      prom.resolve(prom.config);
+    }
+  });
+  failedQueue = [];
+}
+
+api.interceptors.request.use(
+  (config) => {
+    const token = authStore.getToken();
+    if (token && config.headers) {
+      config.headers["Authorization"] = "Bearer " + token;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+api.interceptors.response.use(
+  (response) => response,
+  async (error: AxiosError) => {
+    const originalRequest = error.config!;
+    if (
+      error.response &&
+      error.response.status === 401 &&
+      !originalRequest._retry &&
+      !originalRequest.url?.includes("/auth/refresh")
+    ) {
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject, config: originalRequest });
+        });
+      }
+      isRefreshing = true;
+      originalRequest._retry = true;
+      try {
+        const { data } = await api.post("/auth/refresh");
+        authStore.setToken(data.accessToken);
+        processQueue(null, data.accessToken);
+        originalRequest.headers = {
+          ...originalRequest.headers,
+          Authorization: "Bearer " + data.accessToken,
+        };
+        return api(originalRequest);
+      } catch (err) {
+        processQueue(err, null);
+        authStore.setToken(undefined);
+        return Promise.reject(err);
+      } finally {
+        isRefreshing = false;
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 export const auth = {
   async register(payload: { email: string; password: string }) {
     return api.post("/auth/register", payload).then((r) => r.data);
   },
   async login(payload: { email: string; password: string }) {
-    return api.post("/auth/login", payload).then((r) => r.data);
+    const res = await api.post("/auth/login", payload);
+    if (res.data.accessToken) authStore.setToken(res.data.accessToken);
+    return res.data;
   },
   async refresh() {
-    return api.post("/auth/refresh").then((r) => r.data);
+    const res = await api.post("/auth/refresh");
+    if (res.data.accessToken) authStore.setToken(res.data.accessToken);
+    return res.data;
   },
   async logout() {
+    authStore.setToken(undefined);
     return api.post("/auth/logout").then((r) => r.data);
   },
   async profile(): Promise<{ user: User }> {

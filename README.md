@@ -72,6 +72,11 @@ STRIPE_WEBHOOK_SECRET=whsec_...
 # Monitoring & Analytics
 SENTRY_DSN=
 ```
+
+## 🏗️ Architecture
+
+### System Overview
+```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │   Mobile Apps   │    │   Web Portal    │    │  Admin Panel    │
 │  (iOS/Android)  │    │   (React.js)    │    │   (Next.js)     │
