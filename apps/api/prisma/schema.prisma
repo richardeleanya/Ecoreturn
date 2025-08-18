@@ -1,0 +1,254 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum AuthProvider {
+  EMAIL
+  GOOGLE
+  APPLE
+}
+
+enum UserRole {
+  CONSUMER
+  BRAND
+  PARTNER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum PackageType {
+  ALUMINUM
+  PLASTIC
+  GLASS
+  CARDBOARD
+  COMPOSITE
+}
+
+enum CampaignStatus {
+  ACTIVE
+  PAUSED
+  ENDED
+}
+
+enum ReturnStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum TransactionType {
+  CREDIT
+  DEBIT
+}
+
+enum TransactionRefType {
+  RETURN
+  WITHDRAWAL
+  ADJUSTMENT
+}
+
+enum WithdrawalStatus {
+  REQUESTED
+  PROCESSING
+  PAID
+  FAILED
+}
+
+model User {
+  id              String      @id @default(uuid())
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  email           String      @unique
+  phone           String?     
+  passwordHash    String?     
+  provider        AuthProvider
+  providerId      String?     
+  role            UserRole
+  status          UserStatus  @default(ACTIVE)
+  firstName       String?
+  lastName        String?
+  avatarUrl       String?
+  postcode        String?
+  preferences     Json?
+  emailVerifiedAt DateTime?
+  lastLoginAt     DateTime?
+  brands          Brand[]     @relation("BrandUsers")
+  wallet          Wallet?
+  returns         Return[]
+  withdrawalRequests WithdrawalRequest[]
+  refreshTokens   RefreshToken[]
+  adminAudits     AdminAudit[] @relation("AdminActor")
+}
+
+model Brand {
+  id          String           @id @default(uuid())
+  name        String
+  logoUrl     String?
+  description String?
+  website     String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  users       User[]           @relation("BrandUsers")
+  locations   PartnerLocation[]
+  products    Product[]
+  campaigns   Campaign[]
+}
+
+model PartnerLocation {
+  id           String      @id @default(uuid())
+  brandId      String?     
+  brand        Brand?      @relation(fields: [brandId], references: [id])
+  name         String
+  address      String
+  city         String
+  postcode     String
+  lat          Float
+  lng          Float
+  hoursJson    Json?
+  contactEmail String?
+  contactPhone String?
+  status       UserStatus  @default(ACTIVE)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  returns      Return[]
+}
+
+model Product {
+  id          String      @id @default(uuid())
+  brandId     String
+  brand       Brand       @relation(fields: [brandId], references: [id])
+  name        String
+  barcode     String      @unique
+  sku         String?
+  packageType PackageType
+  imageUrl    String?
+  eligibility Json?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  rewardRules RewardRule[]
+  returns     Return[]
+}
+
+model Campaign {
+  id           String         @id @default(uuid())
+  brandId      String
+  brand        Brand          @relation(fields: [brandId], references: [id])
+  name         String
+  startAt      DateTime
+  endAt        DateTime
+  rewardPerItem Decimal      @db.Decimal(10,2)
+  geoTargetJson Json?
+  budgetPence  Int
+  status       CampaignStatus
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  returns      Return[]
+}
+
+model RewardRule {
+  id              String        @id @default(uuid())
+  productId       String?
+  product         Product?      @relation(fields: [productId], references: [id])
+  packageType     PackageType?
+  baseRewardPence Int
+  multiplier      Decimal       @db.Decimal(5,2) @default(1.0)
+  createdAt       DateTime      @default(now())
+}
+
+model Return {
+  id                String      @id @default(uuid())
+  userId            String
+  user              User        @relation(fields: [userId], references: [id])
+  productId         String
+  product           Product     @relation(fields: [productId], references: [id])
+  campaignId        String?
+  campaign          Campaign?   @relation(fields: [campaignId], references: [id])
+  partnerLocationId String?
+  partnerLocation   PartnerLocation? @relation(fields: [partnerLocationId], references: [id])
+  status            ReturnStatus
+  rewardPence       Int
+  scannedAt         DateTime
+  droppedAt         DateTime?
+  approvedAt        DateTime?
+  rejectionReason   String?
+  gpsLat            Float
+  gpsLng            Float
+  deviceId          String
+  photoId           String?
+  photo             ReturnPhoto? @relation(fields: [photoId], references: [id])
+  fraudReview       Boolean      @default(false)
+  fraudScore        Int          @default(0)
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+}
+
+model ReturnPhoto {
+  id        String   @id @default(uuid())
+  returnId  String
+  return    Return   @relation(fields: [returnId], references: [id])
+  url       String
+  width     Int?
+  height    Int?
+  hash      String
+  createdAt DateTime @default(now())
+}
+
+model Wallet {
+  id          String       @id @default(uuid())
+  userId      String       @unique
+  user        User         @relation(fields: [userId], references: [id])
+  balancePence Int         @default(0)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  transactions Transaction[]
+}
+
+model Transaction {
+  id          String            @id @default(uuid())
+  walletId    String
+  wallet      Wallet            @relation(fields: [walletId], references: [id])
+  type        TransactionType
+  amountPence Int
+  refType     TransactionRefType
+  refId       String
+  createdAt   DateTime          @default(now())
+}
+
+model WithdrawalRequest {
+  id               String            @id @default(uuid())
+  userId           String
+  user             User              @relation(fields: [userId], references: [id])
+  amountPence      Int
+  status           WithdrawalStatus
+  stripeTransferId String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+}
+
+model AdminAudit {
+  id          String   @id @default(uuid())
+  actorUserId String
+  actor       User     @relation("AdminActor", fields: [actorUserId], references: [id])
+  action      String
+  meta        Json
+  createdAt   DateTime @default(now())
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  token     String   @unique
+  revoked   Boolean  @default(false)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
