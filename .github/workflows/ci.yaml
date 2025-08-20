@@ -1,0 +1,105 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_DB: ecoreturn
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd="pg_isready -U postgres" --health-interval=5s --health-timeout=5s --health-retries=10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping" --health-interval=5s --health-timeout=5s --health-retries=10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'pnpm'
+
+      - name: Install pnpm
+        run: npm install -g pnpm
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Build
+        run: pnpm build
+
+      - name: Generate Prisma Client
+        run: pnpm --filter api prisma:generate
+
+      - name: Run API Build
+        run: pnpm --filter api build
+
+      - name: DB Migrate
+        run: |
+          export DATABASE_URL=postgresql://postgres:postgres@localhost:5432/ecoreturn
+          pnpm --filter api db:migrate
+
+      - name: DB Seed
+        run: |
+          export DATABASE_URL=postgresql://postgres:postgres@localhost:5432/ecoreturn
+          pnpm --filter api db:seed
+
+      - name: Test API
+        run: |
+          export DATABASE_URL=postgresql://postgres:postgres@localhost:5432/ecoreturn
+          pnpm --filter api test
+
+      - name: Start API in background
+        run: |
+          nohup node apps/api/dist/main.js &
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ecoreturn
+
+      - name: Wait for API
+        run: |
+          for i in {1..30}; do curl -sf http://localhost:3000/docs && break || sleep 2; done
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps
+
+      - name: Build and Start Brand Dashboard
+        run: |
+          pnpm --filter brand-dashboard build
+          PORT=3001 nohup pnpm --filter brand-dashboard start &
+          sleep 10
+
+      - name: Wait for Brand Dashboard
+        run: |
+          for i in {1..30}; do curl -sf http://localhost:3001 && break || sleep 2; done
+
+      - name: Web E2E Tests
+        run: pnpm --filter brand-dashboard test:e2e
+
+      - name: Upload Playwright Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-e2e-artifacts
+          path: apps/brand-dashboard/test-results/**

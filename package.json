@@ -1,0 +1,29 @@
+{
+  "name": "ecoreturn-monorepo",
+  "private": true,
+  "packageManager": "pnpm@8.15.3",
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "turbo run dev --parallel",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "format": "turbo run format",
+    "prisma:generate": "turbo run prisma:generate",
+    "db:migrate": "turbo run db:migrate",
+    "db:seed": "turbo run db:seed"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "infra/prisma"
+  ],
+  "devDependencies": {
+    "turbo": "^1.13.0",
+    "husky": "^8.0.3",
+    "lint-staged": "^15.2.0",
+    "@commitlint/cli": "^19.3.0",
+    "@commitlint/config-conventional": "^19.3.0"
+  }
+}

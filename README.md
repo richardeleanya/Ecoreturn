@@ -54,31 +54,23 @@ npm run mobile:android # Android emulator
 
 ### Environment Variables
 
-```bash
+```env
 # Database
-DATABASE_URL=mongodb://localhost:27017/ecoreturn
+POSTGRES_URL=postgres://user:pass@localhost:5432/ecoreturn
 REDIS_URL=redis://localhost:6379
+
+# CORS allowlist (comma-separated)
+CORS_ALLOWLIST=http://localhost:3000,http://localhost:3001,http://localhost:3002
 
 # Authentication
 JWT_SECRET=your_jwt_secret_key
-BCRYPT_ROUNDS=12
 
 # Payment Processing
 STRIPE_SECRET_KEY=sk_test_...
 STRIPE_WEBHOOK_SECRET=whsec_...
 
-# External Services
-AWS_ACCESS_KEY_ID=your_aws_key
-AWS_SECRET_ACCESS_KEY=your_aws_secret
-AWS_REGION=eu-west-2
-
-# Barcode API
-GS1_API_KEY=your_gs1_api_key
-PRODUCT_API_URL=https://api.gs1.org/v1
-
-# Mobile App Config
-MOBILE_API_URL=https://api.ecoreturn.com
-MOBILE_VERSION=1.0.0
+# Monitoring & Analytics
+SENTRY_DSN=
 ```
 
 ## 🏗️ Architecture
@@ -87,29 +79,27 @@ MOBILE_VERSION=1.0.0
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │   Mobile Apps   │    │   Web Portal    │    │  Admin Panel    │
-│  (iOS/Android)  │    │   (React.js)    │    │   (Next.js)     │
+│  (iOS/Android)  │    │   (Next.js)     │    │   (Next.js)     │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
          │                       │                       │
          └───────────────────────┼───────────────────────┘
                                  │
-                    ┌─────────────────┐
-                    │   API Gateway   │
-                    │   (Express.js)  │
-                    └─────────────────┘
+                    ┌──────────────────────────────┐
+                    │   API Gateway (NestJS)       │
+                    └──────────────────────────────┘
                                  │
          ┌───────────────────────┼───────────────────────┐
          │                       │                       │
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │  Auth Service   │    │ Rewards Engine  │    │ Analytics API   │
-│   (Node.js)     │    │   (Node.js)     │    │   (Python)      │
+│   (NestJS)      │    │   (NestJS)      │    │   (NestJS)      │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
          │                       │                       │
          └───────────────────────┼───────────────────────┘
                                  │
-                    ┌─────────────────┐
-                    │   Data Layer    │
-                    │ (MongoDB/Redis) │
-                    └─────────────────┘
+                    ┌──────────────────────────────┐
+                    │   Data Layer (Postgres/Redis)│
+                    └──────────────────────────────┘
 ```
 
 ### Tech Stack
@@ -121,25 +111,26 @@ MOBILE_VERSION=1.0.0
 - **State Management**: Redux Toolkit + RTK Query
 
 **Backend:**
-- **API**: Node.js + Express.js + TypeScript
-- **Database**: MongoDB with Mongoose ODM
-- **Cache**: Redis for sessions and real-time data
-- **Queue**: Bull Queue for background jobs
-- **Authentication**: JWT + Passport.js
+- **API**: NestJS + TypeScript
+- **Database**: PostgreSQL (Prisma ORM)
+- **Cache**: Redis 7+ (BullMQ for jobs/queues)
+- **Uploads**: Local disk (dev) or S3/MinIO (prod/infra)
+- **Authentication**: JWT (access/refresh, RBAC)
+- **Background Jobs**: BullMQ (email, withdrawal, etc.)
 
 **Cloud & DevOps:**
-- **Hosting**: AWS (EC2, ECS, Lambda)
-- **Storage**: AWS S3 for media files
+- **Hosting**: AWS (EC2, ECS, Lambda), Docker Compose for local dev
+- **Storage**: AWS S3/MinIO for media files
 - **CDN**: AWS CloudFront
-- **Monitoring**: AWS CloudWatch + Sentry
+- **Monitoring**: AWS CloudWatch, Sentry, Mixpanel
 - **CI/CD**: GitHub Actions
 
 **External Services:**
-- **Payments**: Stripe for instant payouts
+- **Payments**: Stripe (Connect/test mode)
 - **Maps**: Google Maps API
 - **Push Notifications**: Firebase Cloud Messaging
 - **Analytics**: Mixpanel + Google Analytics
-- **Email**: SendGrid for transactional emails
+- **Email**: Mailhog dev, SendGrid prod
 
 ## 📱 Mobile App Development
 
@@ -239,6 +230,42 @@ GET  /api/v1/locations/search    # Search locations
 }
 ```
 
+## 🔒 Security, Fraud, and Compliance
+
+### API Security
+- **HTTP Headers**: Uses [Helmet](https://helmetjs.github.io/) to secure API endpoints.
+- **Rate Limiting**: Per-IP rate limiting applied to all public API routes.
+- **CORS**: Configured with allowlist for trusted origins.
+- **Input Validation**: All endpoints validate input using DTOs and [Zod](https://zod.dev/); all user input is sanitized against XSS and NoSQL injection.
+- **Authentication**: JWT with refresh token rotation and reuse detection; tokens invalidated on logout.
+- **RBAC Guards**: Role-based access control enforced and tested for each protected resource.
+
+### Fraud Detection Basics
+- Every return is stored with `deviceId`, GPS location, perceptual `photoHash`, and timing data. Risk scoring is applied based on threshold rules (e.g., rapid-fire returns, duplicate device/photo, location mismatch).
+- Suspicious returns are flagged with `fraudReview: true` for manual review; clean returns are auto-approved in MVP.
+- Fraud telemetry is logged for analytics.
+
+### Telemetry & Monitoring
+- [Sentry](https://sentry.io/) initialized for API, web, and mobile apps (behind environment variable flag).
+- Global error handlers and structured logging using [Pino](https://getpino.io/) (or NestJS Logger in JSON mode for prod).
+- All logs are structured and support GDPR-compliant redaction.
+
+### GDPR & Data Privacy
+- **Privacy Policy**: User data is processed in compliance with GDPR. Personal data is only retained as long as required for service delivery and regulatory purposes.
+- **Data Retention**: Transactional records are retained for regulatory and anti-fraud reasons; PII is anonymized on account deletion.
+- **Account Deletion**: Users can delete their account at any time; this triggers anonymization of user data, deactivation of their wallet, and removal of all unrequired PII.
+- **DPIA**: A Data Protection Impact Assessment (DPIA) is conducted and reviewed before launch (see checklist below).
+
+### DPIA Checklist (Placeholder)
+- [ ] Data flows mapped and documented
+- [ ] Lawful basis for processing established
+- [ ] Data minimization reviewed
+- [ ] Risk assessment (accidental loss, unauthorized access, profiling)
+- [ ] Mitigations for high-risk processing
+- [ ] Data subject rights procedures (access, deletion, portability)
+- [ ] Incident response plan tested
+
+---
 ## 🧪 Testing
 
 ### Running Tests
@@ -487,6 +514,20 @@ Special thanks to:
 - **AWS** for reliable cloud infrastructure
 - **Our Beta Users** for invaluable feedback
 - **Environmental Partners** for sustainability guidance
+
+## Admin Role Management & Audits
+
+- **Seeded Admin User**:  
+  Email: `demo_admin@ecoreturn.com`  
+  Password: `Passw0rd!`
+- **Endpoints**:
+  - `/api/v1/admin/users`: List users; update role/status (ADMIN only)
+  - `/api/v1/admin/audits`: List audit logs (ADMIN only)
+- **UI**:
+  - `/admin/users`: Change user roles or suspend accounts. All changes are audited.
+  - `/admin/audits`: View audit history and filter by actor, action, or date.
+- **Audit Events**:  
+  All user role/status changes are logged with before/after values and actor.
 
 ---
 
